@@ -14,7 +14,7 @@ st.markdown("Predict exam scores based on study hours and sleep hours using Line
 # Load and train the model
 @st.cache_resource
 def train_model():
-    df = pd.read_csv("study_vs_marks.csv")
+    df = pd.read_csv("study_time_vs_marks_dataset.csv")
     x = df[["study_hours", "sleep_hours"]]
     y = df["exam_score"]
     model = LinearRegression()
