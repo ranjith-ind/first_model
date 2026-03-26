@@ -1,43 +1,78 @@
-from sklearn.linear_model import LinearRegression
-import numpy as np
-import pandas as pd
 import streamlit as st
-df=pd.read_csv(r"study_time_vs_marks_dataset.csv")
-x=df[["study_hours","sleep_hours"]]
-y=df["exam_score"]
-model=LinearRegression()
-model.fit(x,y)  
-user_input1=int(input("Enter study hours:" ))
-user_input2=int(input("Enter sleep hours:" ))
-input_df = pd.DataFrame([[user_input1, user_input2]], columns=["study_hours", "sleep_hours"])
-predicted_score = model.predict(input_df)
-print(f"Predicted exam score: {predicted_score[0]:.2f}")
+from sklearn.linear_model import LinearRegression
+import pandas as pd
+import numpy as np
 
-# Streamlit Interface
-st.set_page_config(page_title="Exam Score Predictor", page_icon="📘", layout="centered")
-st.title("📘 Exam Score Predictor")
-st.write("Predict exam score using study hours and sleep hours.")
+# Set page configuration
+st.set_page_config(page_title="Exam Score Predictor", layout="wide")
 
-st_sub_col1, st_sub_col2 = st.columns(2)
-with st_sub_col1:
-	study_hours = st.slider("Study hours", min_value=0, max_value=14, value=5, step=1)
-with st_sub_col2:
-	sleep_hours = st.slider("Sleep hours", min_value=0, max_value=12, value=7, step=1)
+# Title and description
 
-display_mode = st.selectbox("Output format", ["Score only", "Score with performance level"])
+st.title("📚 Exam Score Predictor")
+st.markdown("Predict exam scores based on study hours and sleep hours using Linear Regression")
 
-if st.button("Predict score"):
-	st_input_df = pd.DataFrame([[study_hours, sleep_hours]], columns=["study_hours", "sleep_hours"])
-	st_predicted_score = model.predict(st_input_df)[0]
-	st.success(f"Predicted exam score: {st_predicted_score:.2f}")
+# Load and train the model
+@st.cache_resource
+def train_model():
+    df = pd.read_csv("study_vs_marks.csv")
+    x = df[["study_hours", "sleep_hours"]]
+    y = df["exam_score"]
+    model = LinearRegression()
+    model.fit(x, y)
+    return model, df
 
-	if display_mode == "Score with performance level":
-		if st_predicted_score >= 85:
-			level = "Excellent"
-		elif st_predicted_score >= 70:
-			level = "Good"
-		elif st_predicted_score >= 50:
-			level = "Average"
-		else:
-			level = "Needs Improvement"
-		st.info(f"Performance level: {level}")
+model, df = train_model()
+
+# Display model information
+with st.expander("📊 Model Information"):
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("Study Hours Coefficient", f"{model.coef_[0]:.4f}")
+    with col2:
+        st.metric("Sleep Hours Coefficient", f"{model.coef_[1]:.4f}")
+    st.info(f"**Intercept:** {model.intercept_:.4f}")
+
+# Create two columns for sliders
+col1, col2 = st.columns(2)
+
+with col1:
+    study_hours = st.slider(
+        "Study Hours",
+        min_value=float(df["study_hours"].min()),
+        max_value=float(df["study_hours"].max()),
+        value=5.0,
+        step=0.5,
+        help="Select the number of study hours"
+    )
+
+with col2:
+    sleep_hours = st.slider(
+        "Sleep Hours",
+        min_value=float(df["sleep_hours"].min()),
+        max_value=float(df["sleep_hours"].max()),
+        value=7.0,
+        step=0.5,
+        help="Select the number of sleep hours"
+    )
+
+# Make prediction
+prediction = model.predict([[study_hours, sleep_hours]])[0]
+
+# Display prediction
+st.success(f"## Predicted Exam Score: {prediction:.2f}")
+
+# Display data statistics
+with st.expander("📈 Dataset Statistics"):
+    st.write(df.describe())
+
+# Display data visualization
+with st.expander("📉 Data Visualization"):
+    st.scatter_chart(data=df.set_index("study_hours")[["exam_score"]])
+
+# Display sample predictions
+with st.expander("🔮 Sample Predictions"):
+    sample_data = df.head(5).copy()
+    sample_predictions = model.predict(sample_data[["study_hours", "sleep_hours"]])
+    sample_data["Predicted Score"] = sample_predictions
+    st.dataframe(sample_data, use_container_width=True)
+
